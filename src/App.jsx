@@ -258,7 +258,6 @@ function App() {
         )}
       </div>
       <div className="note">
-        <p><strong>Note:</strong> This is using a simulated model for demonstration. For real applications, integrate a trained model.</p>
       </div>
     </div>
   );
