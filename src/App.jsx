@@ -1,4 +1,4 @@
-// src/App.jsx
+
 import { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-backend-webgl';
@@ -15,15 +15,14 @@ function App() {
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [emotion, setEmotion] = useState('Loading...');
   
-  // For smoothing emotions - track recent predictions
-  const recentEmotionsRef = useRef([]);
-  const emotionSmoothing = 10; // Number of frames to smooth over
-  
-  // For demo consistency - use a fixed emotion for 3 seconds before changing
-  const fixedEmotionTimeRef = useRef(0);
-  const currentEmotionIndexRef = useRef(2); // Start with neutral
 
-  // Initialize camera and models
+  const recentEmotionsRef = useRef([]);
+  const emotionSmoothing = 10; 
+  
+  const fixedEmotionTimeRef = useRef(0);
+  const currentEmotionIndexRef = useRef(2);
+
+ 
   useEffect(() => {
     const setupCamera = async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -46,11 +45,11 @@ function App() {
       try {
         await tf.ready();
         
-        // Load BlazeFace for face detection
+        
         const faceModel = await blazeface.load();
         setFaceDetector(faceModel);
         
-        // Create a simulated emotion model with more stable predictions
+       
         const emotionModel = createSimulatedEmotionModel();
         setModel(emotionModel);
         
@@ -60,7 +59,7 @@ function App() {
       }
     };
 
-    // Create a simulated model that gives more consistent predictions for demo purposes
+    
     const createSimulatedEmotionModel = () => {
       const model = tf.sequential();
       model.add(tf.layers.conv2d({
@@ -77,35 +76,32 @@ function App() {
       
       model.predict = (input) => {
         return tf.tidy(() => {
-          // Change emotion every 3 seconds for demo
+       
           const now = Date.now();
           if (now - fixedEmotionTimeRef.current > 3000) {
             fixedEmotionTimeRef.current = now;
-            // Cycle through emotions in a more natural way
-            // Favor "neutral" and "happy" more often
             if (Math.random() > 0.7) {
               currentEmotionIndexRef.current = Math.floor(Math.random() * emotions.length);
             } else {
-              // Use neutral or happy more frequently
-              currentEmotionIndexRef.current = Math.random() > 0.5 ? 4 : 3; // 4=neutral, 3=happy
+              currentEmotionIndexRef.current = Math.random() > 0.5 ? 4 : 3;
             }
           }
           
-          // Create a probability distribution with the current emotion having highest probability
+          
           const probabilities = Array(emotions.length).fill(0.05);
           probabilities[currentEmotionIndexRef.current] = 0.6;
           
-          // Normalize to ensure sum is 1
+          
           const sum = probabilities.reduce((a, b) => a + b, 0);
           const normalized = probabilities.map(val => val / sum);
           
-          // Add a small amount of noise for realism
+    
           const withNoise = normalized.map(val => {
             const noise = (Math.random() * 0.1) - 0.05;
             return Math.max(0, val + noise);
           });
           
-          // Renormalize after adding noise
+         
           const finalSum = withNoise.reduce((a, b) => a + b, 0);
           const final = withNoise.map(val => val / finalSum);
           
@@ -119,7 +115,7 @@ function App() {
     setupCamera();
     loadModels();
 
-    // Cleanup
+   
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
         videoRef.current.srcObject.getTracks().forEach(track => track.stop());
@@ -127,7 +123,7 @@ function App() {
     };
   }, []);
 
-  // Run emotion detection
+
   useEffect(() => {
     if (isModelLoading || !faceDetector || !model) return;
 
@@ -141,25 +137,24 @@ function App() {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
-      // Draw video frame to canvas
+      
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Detect faces
+     
       const predictions = await faceDetector.estimateFaces(video, false);
       
       if (predictions.length > 0) {
-        // Process the first face detected
+       
         const face = predictions[0];
         const start = face.topLeft;
         const end = face.bottomRight;
         const size = [end[0] - start[0], end[1] - start[1]];
         
-        // Draw rectangle around face
+        
         ctx.strokeStyle = '#00ff00';
         ctx.lineWidth = 2;
         ctx.strokeRect(start[0], start[1], size[0], size[1]);
         
-        // Extract face from canvas for emotion analysis
         const faceCanvas = document.createElement('canvas');
         faceCanvas.width = size[0];
         faceCanvas.height = size[1];
@@ -169,7 +164,7 @@ function App() {
           0, 0, size[0], size[1]
         );
         
-        // Preprocess for emotion model
+        
         const tensor = tf.browser.fromPixels(faceCanvas)
           .resizeNearestNeighbor([48, 48])
           .mean(2)
@@ -178,17 +173,17 @@ function App() {
           .toFloat()
           .div(255.0);
         
-        // Predict emotion
+       
         const result = await model.predict(tensor);
         const prediction = await result.data();
         
-        // Apply smoothing to avoid rapid fluctuations
+        
         recentEmotionsRef.current.push(prediction);
         if (recentEmotionsRef.current.length > emotionSmoothing) {
           recentEmotionsRef.current.shift();
         }
         
-        // Average the predictions over several frames
+        
         const averagedPredictions = Array(emotions.length).fill(0);
         recentEmotionsRef.current.forEach(pred => {
           pred.forEach((p, i) => {
@@ -196,7 +191,7 @@ function App() {
           });
         });
         
-        // Find the dominant emotion
+        
         averagedPredictions.forEach((p, i) => {
           averagedPredictions[i] = p / recentEmotionsRef.current.length;
         });
@@ -204,12 +199,12 @@ function App() {
         const emotionIndex = averagedPredictions.indexOf(Math.max(...averagedPredictions));
         setEmotion(emotions[emotionIndex]);
         
-        // Display emotion on canvas
+      
         ctx.fillStyle = '#00ff00';
         ctx.font = '24px Arial';
         ctx.fillText(emotions[emotionIndex], start[0], start[1] - 10);
         
-        // Show confidence bars for debugging/demo
+       
         const barWidth = 100;
         const barHeight = 10;
         const barSpacing = 15;
@@ -223,7 +218,7 @@ function App() {
           ctx.fillText(`${em}: ${confidence.toFixed(1)}%`, 10 + barWidth + 5, 10 + (idx * barSpacing) + barHeight);
         });
         
-        // Clean up
+       
         tensor.dispose();
         result.dispose();
       } else {
